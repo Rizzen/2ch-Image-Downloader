@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Net;
-using System.IO;
-using System.Threading.Tasks;
 using HtmlAgilityPack;
 
 namespace _2chparse
@@ -22,8 +19,8 @@ namespace _2chparse
             {
                 string link = node.SelectSingleNode("div/a").Attributes["href"].Value;
                 Console.WriteLine("--------" + link);
-                Console.WriteLine("Extention ---- " + link.Substring(link.Length-4));
-                _webClient.DownloadFile("https://2ch.pm"+link,"Image "+i+ link.Substring(link.Length - 4));
+                Console.WriteLine("Extention ---- " + link.Substring(link.Length - 4));
+                _webClient.DownloadFile("https://2ch.pm" + link, "Image " + i + link.Substring(link.Length - 4));
                 i++;
             }
         }
