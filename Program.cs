@@ -1,54 +1,75 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Threading.Tasks;
+using System.ComponentModel;
+using System.IO;
+using System.Threading;
 using HtmlAgilityPack;
 
 namespace DvachImages
 {
     class Program
     {
-        public static List<string> imgLinks;
-        public static WebClient _webClient;
 
-        public static void GetImages(HtmlDocument htmlDoc)
+        //TODO POOL OF THREADS (Threading.ThreadPool)
+
+        public static List<String> GetImageLinks(HtmlDocument htmlDoc)
         {
-            Console.WriteLine(htmlDoc.DocumentNode.SelectNodes("//*[@class='image']").Count());
-            int i = 0;
-            
+            var imageLinks = new List<String>();
             foreach (HtmlNode node in htmlDoc.DocumentNode.SelectNodes("//*[@class='image']"))
             {
-                string format;
                 string link = node.SelectSingleNode("div/a").Attributes["href"].Value;
-                Console.WriteLine("--------" + link);
-
-                using (WebResponse response = WebRequest.Create(String.Format("https://2ch.hk{0}", link)).GetResponse())
-                {
-                    format = response.Headers.GetValues("Content-Type")[0].Split(new char[] { '/' }).Last();
-                    Console.WriteLine("\n------- " + format + " --------\n");
-                }
-
-                _webClient.DownloadFile("https://2ch.hk" + link, "Image " + i + "." + format);
-                i++;
+                imageLinks.Add($"http://2ch.hk{link}");
+                
             }
+            
+            return imageLinks;
         }
 
+        public static async void DownloadImageAsync(string link)
+        {
+            string format = Path.GetExtension(link);
+            var wc = new WebClient();
 
+            wc.DownloadFileCompleted += DownloadFileCompleted;
+            Console.WriteLine(link);
+            await wc.DownloadFileTaskAsync(link, $"Image {DateTimeOffset.Now.ToUnixTimeMilliseconds()+wc.GetHashCode()}{format}");
+            
+        }
+
+        public static void GetAllImages(HtmlDocument htmlDoc)
+        {
+            List<string> imgLinks = new List<string>(); ;
+            imgLinks = GetImageLinks(htmlDoc);
+            foreach (string link in imgLinks)
+            {
+                DownloadImageAsync(link);
+            }
+            Console.WriteLine("...............Done.............\n");
+
+        }
 
         static void Main()
         {
-            imgLinks = new List<string>();
-            string remoteURI = "https://2ch.hk/v/res/1765234.html";
-            HtmlDocument doc = new HtmlDocument();
-            _webClient = new WebClient();
-            _webClient.Encoding = System.Text.Encoding.GetEncoding("utf-8");
+            const string REMOTE_URI = "https://2ch.hk/v/res/1908508.html";
+            var doc = new HtmlDocument();
+            var _webClient = new WebClient();
 
             Console.WriteLine("...............Request.............\n");
-            doc.LoadHtml(_webClient.DownloadString(remoteURI));
-            GetImages(doc);
-            Console.WriteLine("----------------Done---------------");
-
+            Console.WriteLine($"Processors count: {Environment.ProcessorCount}");
+           
+            doc.LoadHtml(_webClient.DownloadString(REMOTE_URI));
+            GetAllImages(doc);
+            
             Console.ReadLine();
+        }
+
+        static void DownloadFileCompleted(object sender, AsyncCompletedEventArgs e)
+        {
+            Console.WriteLine($"Downloaded image in thread {Thread.CurrentThread.ManagedThreadId}");
         }
     }
 }
+
